@@ -181,13 +181,10 @@ void readio(int newsockfd) {
     if (file > 0) {
         sprintf(fn, "/var/log/anpr/%d_io.ctl", address);
         if (!strcmp(command, "SO")) {
-            fp = fopen(fn, "a+");
-            rewind(fp);
-            fread(buffer, sizeof (char), 255, fp);
-            fclose(fp);
-            oo = strtol(buffer, NULL, 0);
-            sprintf(tmp_out, "%d", oo);
-            //oo = ov[address];
+            bufferd[0] = 0x40;
+            I2C_Send(&file, bufferd, 1);
+            I2C_Read(&file, data, 1);
+            oo = data[0];
             bufferd[0] = 0x10;
             bufferd[1] = oo;
             if (strtol(io, NULL, 0) == 1 && !CHECK_BIT(oo, 1)) {
@@ -203,21 +200,16 @@ void readio(int newsockfd) {
                 bufferd[1] = oo + 8;
             }
             oo = bufferd[1];
-            //ov[address] = oo;
             sprintf(tmp_out, "%d", oo);
-            fp = fopen(fn, "w");
-            fputs(tmp_out, fp);
-            fclose(fp);
             strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
             I2C_Send(&file, bufferd, 2);
         }
         if (!strcmp(command, "RO")) {
+            bufferd[0] = 0x40;
+            I2C_Send(&file, bufferd, 1);
+            I2C_Read(&file, data, 1);
+            oo = data[0];
             bufferd[0] = 0x10;
-            fp = fopen(fn, "a+");
-            rewind(fp);
-            fread(buffer, sizeof (char), 255, fp);
-            fclose(fp);
-            oo = strtol(buffer, NULL, 0);
             bufferd[1] = oo;
             if (strtol(io, NULL, 0) == 1 && CHECK_BIT(oo, 1)) {
                 bufferd[1] = oo - 1;
@@ -232,11 +224,7 @@ void readio(int newsockfd) {
                 bufferd[1] = oo - 8;
             }
             oo = bufferd[1];
-            //ov[address] = oo;
             sprintf(tmp_out, "%d", oo);
-            fp = fopen(fn, "w");
-            fputs(tmp_out, fp);
-            fclose(fp);
             strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
             I2C_Send(&file, bufferd, 2);
         }
