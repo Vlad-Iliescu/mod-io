@@ -134,7 +134,6 @@ void readio(int newsockfd) {
     char str_out[512], tmp_out[128], buffer[256], fn[128], command[5], add[5], io[1], c[1];
     char* success = "false";
     float vcc;
-    FILE *fp;
     unsigned char bufferd[2], data[2];
     int n, i, j, address;
     size_t blength;
