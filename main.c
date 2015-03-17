@@ -133,6 +133,7 @@ void readio(int newsockfd) {
     int file = 0, temp = 0, oo = 0;
     char str_out[512], tmp_out[128], buffer[256], fn[128], command[5], add[5], io[1], c[1];
     char* success = "false";
+    long temp2 = 0;
     float vcc;
     unsigned char bufferd[2], data[2];
     int n, i, j, address;
@@ -167,7 +168,7 @@ void readio(int newsockfd) {
             j++;
         }
     }
-    
+
     address = strtol(add, NULL, 0);
     strncpy(str_out, "{\"Answer\":{", sizeof (str_out));
     sprintf(tmp_out, "\"%s\":", command);
@@ -296,6 +297,37 @@ void readio(int newsockfd) {
             sprintf(tmp_out, "\"4\":%.3f}}", vcc);
             strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
 
+        }
+        if (!strcmp(command, "DC")) {
+            strncat(str_out, "{\"DigitalCounter\":{", sizeof (str_out) - strlen(str_out));
+            // digital counter 1
+            bufferd[0] = 0x50;
+            I2C_Send(&file, bufferd, 1);
+            I2C_Read(&file, data, 2);
+            temp2 = data[0] + (256 * data[1]);
+            sprintf(tmp_out, "\"1\":%ld,", temp2);
+            strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
+            // digital counter 2
+            bufferd[0] = 0x51;
+            I2C_Send(&file, bufferd, 1);
+            I2C_Read(&file, data, 2);
+            temp2 = data[0] + (256 * data[1]);
+            sprintf(tmp_out, "\"2\":%ld,", temp2);
+            strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
+            // digital counter 3
+            bufferd[0] = 0x52;
+            I2C_Send(&file, bufferd, 1);
+            I2C_Read(&file, data, 2);
+            temp2 = data[0] + (256 * data[1]);
+            sprintf(tmp_out, "\"3\":%ld,", temp2);
+            strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
+            // digital counter 4
+            bufferd[0] = 0x53;
+            I2C_Send(&file, bufferd, 1);
+            I2C_Read(&file, data, 2);
+            temp2 = data[0] + (256 * data[1]);
+            sprintf(tmp_out, "\"4\":%ld}}", temp2);
+            strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
         }
         I2C_Close(&file);
     } else {

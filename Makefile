@@ -17,10 +17,10 @@ Tmp/i2c.o:	i2c.c
 	arm-linux-gnueabihf-gcc -c -I/var/www/anpr_new/anpr_ioboard/ -Wall -g -o Tmp/i2c.o i2c.c
 
 # include project implementation makefile
-include nbproject/Makefile-impl.mk
+#include nbproject/Makefile-impl.mk
 
 # include project make variables
-include nbproject/Makefile-variables.mk
+#include nbproject/Makefile-variables.mk
 
 clean:
-	rm -f mod-io Tmp/mod-io.o Tmp/i2c.o
+	rm -rf mod-io Tmp/mod-io.o Tmp/i2c.o
