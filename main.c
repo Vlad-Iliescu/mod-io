@@ -13,6 +13,7 @@
  * 
  */
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -27,8 +28,50 @@
 #include "i2c.h"
 #define CHECK_BIT(var, pos) ((var) & (1 << (pos - 1)))
 
+
+int strsplit(char **, char *, char *, int);
+void error_log(char *, bool);
+
+/**
+ * Write errors and information to logfile
+ * @param msg -> string to be written
+ */
+void error_log(char *msg, bool debug) {
+
+    if (debug) {
+        // create vars needed for error_handling
+        FILE *err_log = fopen("/var/log/anpr/modio.log", "a");
+        char tmp_str[100];
+        time_t cur_time = time(NULL);
+
+        if (err_log == NULL) {
+            puts("Error opening logfile");
+            return;
+        }
+        // format error message and write it to the logfile
+        strftime(tmp_str, 100, "%Y-%m-%d %H:%M:%S", localtime(&cur_time));
+        fprintf(err_log, "%s -> %s\n", tmp_str, msg);
+        fclose(err_log);
+        err_log = NULL;
+    }
+    return;
+}
+
+int strsplit(char **array, char *buf, char *sep, int max) {
+    char *token;
+    int i = 0;
+    int size = 0;
+    char *bp = strdup(buf);
+    while ((i < max - 1) && ((token = strsep(&bp, sep)) != NULL)) {
+        array[i++] = token;
+    }
+    array[i] = NULL; // set to null
+    size = i;
+    return size;
+}
+
 void error(const char *msg) {
-    perror(msg);
+    error_log(msg, true);
     exit(-1);
 }
 
@@ -89,17 +132,19 @@ int main(int argc, char **argv) {
     socklen_t clilen;
     struct sockaddr_in serv_addr, cli_addr;
 
+    error_log("Started", true);
     if (argc < 2) {
         printf("Too few arguments.\n Type -help.\n");
         exit(-1);
     }
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        error_log("ERROR Opening socket", true);
+        exit(-1);
+    }
     optval = 1;
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
-    if (sockfd < 0) {
-        error("ERROR Opening socket");
-    }
 
     // set default values
     bzero((char *) &serv_addr, sizeof (serv_addr));
@@ -109,8 +154,9 @@ int main(int argc, char **argv) {
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(portno);
     // bind socket to address
+    error_log("Socket", true);
     if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)) < 0) {
-        error("ERROR on binding");
+        error_log("ERROR on binding", true);
     }
 
     while (1 == 1) {
@@ -149,6 +195,7 @@ void readio(int newsockfd) {
     // output string is build as {"Answer":{<<command>>:{<<value>>},{"success": {"true" OR "false"}}}}
     n = 0;
     j = 0;
+    error_log(buffer, true);
     blength = strlen(buffer);
     for (i = 0; i < blength; i++) {
         c[0] = buffer[i];
