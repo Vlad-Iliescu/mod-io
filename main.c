@@ -40,7 +40,7 @@ void error_log(char *msg, bool debug) {
 
     if (debug) {
         // create vars needed for error_handling
-        FILE *err_log = fopen("/var/log/anpr/modio.log", "a");
+        FILE *err_log = fopen("logs/modio.log", "a");
         char tmp_str[100];
         time_t cur_time = time(NULL);
 
@@ -220,13 +220,13 @@ void readio(int newsockfd) {
     strncpy(str_out, "{\"Answer\":{", sizeof (str_out));
     sprintf(tmp_out, "\"%s\":", command);
     strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
-    success = "true";
+    //success = "true";
     bzero(buffer, 256);
 
     I2C_Open(&file, address);
 
     if (file > 0) {
-        sprintf(fn, "/var/log/anpr/%d_io.ctl", address);
+        sprintf(fn, "logs/%d_io.ctl", address);
         if (!strcmp(command, "SO")) {
             bufferd[0] = 0x40;
             I2C_Send(&file, bufferd, 1);
@@ -250,6 +250,7 @@ void readio(int newsockfd) {
             sprintf(tmp_out, "%d", oo);
             strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
             I2C_Send(&file, bufferd, 2);
+            success = "true";
         }
         if (!strcmp(command, "RO")) {
             bufferd[0] = 0x40;
@@ -274,6 +275,7 @@ void readio(int newsockfd) {
             sprintf(tmp_out, "%d", oo);
             strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
             I2C_Send(&file, bufferd, 2);
+            success = "true";
         }
         if (!strcmp(command, "DI")) {
             bufferd[0] = 0x20;
@@ -289,6 +291,24 @@ void readio(int newsockfd) {
                     strncat(str_out, "}}", sizeof (str_out) - strlen(str_out));
                 }
             }
+            success = "true";
+        }
+        if (!strcmp(command, "DO")) {
+            bufferd[0] = 0x40;
+            I2C_Send(&file, bufferd, 1);
+            I2C_Read(&file, data, 1);
+
+            strncat(str_out, "{\"Output\":{", sizeof (str_out) - strlen(str_out));
+            for (i = 0; i < 4; i++) {
+                sprintf(tmp_out, "\"%d\":%d", i + 1, (data[0] >> i) & 0x01);
+                strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
+                if (i < 3) {
+                    strncat(str_out, ",", sizeof (str_out) - strlen(str_out));
+                } else {
+                    strncat(str_out, "}}", sizeof (str_out) - strlen(str_out));
+                }
+            }
+            success = "true";
         }
         if (!strcmp(command, "AI")) {
             strncat(str_out, "{\"Analoginput\":{", sizeof (str_out) - strlen(str_out));
@@ -343,6 +363,7 @@ void readio(int newsockfd) {
             vcc = (3.3 * temp) / 1023;
             sprintf(tmp_out, "\"4\":%.3f}}", vcc);
             strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
+            success = "true";
 
         }
         if (!strcmp(command, "DC")) {
@@ -375,6 +396,7 @@ void readio(int newsockfd) {
             temp2 = data[0] + (256 * data[1]);
             sprintf(tmp_out, "\"4\":%ld}}", temp2);
             strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
+            success = "true";
         }
         I2C_Close(&file);
     } else {
