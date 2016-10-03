@@ -12,35 +12,13 @@
  * @license:    http://www.anpr-systems.nl/licenses/ktg_anpr
  * 
  */
-#include <stdio.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <signal.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <string.h>
-#include <assert.h>
-#include <netinet/in.h>
-#include "i2c.h"
-#define CHECK_BIT(var, pos) ((var) & (1 << (pos - 1)))
+#include "main.h"
 
-
-int strsplit(char **, char *, char *, int);
-void error_log(char *, bool);
-
-/**
- * Write errors and information to logfile
- * @param msg -> string to be written
- */
 void error_log(char *msg, bool debug) {
 
     if (debug) {
         // create vars needed for error_handling
-        FILE *err_log = fopen("/var/log/anpr/modio.log", "a");
+        FILE *err_log = fopen("logs/modio.log", "a");
         char tmp_str[100];
         time_t cur_time = time(NULL);
 
@@ -57,74 +35,10 @@ void error_log(char *msg, bool debug) {
     return;
 }
 
-int strsplit(char **array, char *buf, char *sep, int max) {
-    char *token;
-    int i = 0;
-    int size = 0;
-    char *bp = strdup(buf);
-    while ((i < max - 1) && ((token = strsep(&bp, sep)) != NULL)) {
-        array[i++] = token;
-    }
-    array[i] = NULL; // set to null
-    size = i;
-    return size;
-}
-
 void error(const char *msg) {
     error_log(msg, true);
     exit(-1);
 }
-
-char** str_split(char* a_str, const char a_delim) {
-    char** result = 0;
-    size_t count = 0;
-    char* tmp = a_str;
-    char* last_comma = 0;
-    char delim[2];
-    delim[0] = a_delim;
-    delim[1] = 0;
-
-    /* Count how many elements will be extracted. */
-    while (*tmp) {
-        if (a_delim == *tmp) {
-            count++;
-            last_comma = tmp;
-        }
-        tmp++;
-    }
-
-    /* Add space for trailing token. */
-    count += last_comma < (a_str + strlen(a_str) - 1);
-
-    /* Add space for terminating null string so caller
-       knows where the list of returned strings ends. */
-    count++;
-
-    result = malloc(sizeof (char*) * count);
-
-    if (result) {
-        size_t idx = 0;
-        char* token = strtok(a_str, delim);
-
-        while (token) {
-            assert(idx < count);
-            *(result + idx++) = strdup(token);
-            token = strtok(0, delim);
-        }
-        assert(idx == count - 1);
-        *(result + idx) = 0;
-    }
-
-    return result;
-
-}
-
-/**
- *
- * @param argc
- * @param argv
- * @return
- */
 
 int main(int argc, char **argv) {
     // declare vars
@@ -159,7 +73,7 @@ int main(int argc, char **argv) {
         error_log("ERROR on binding", true);
     }
 
-    while (1 == 1) {
+    while (true) {
         //listen to the socket
         listen(sockfd, 5);
         clilen = sizeof (cli_addr);
@@ -195,10 +109,12 @@ void readio(int newsockfd) {
     // output string is build as {"Answer":{<<command>>:{<<value>>},{"success": {"true" OR "false"}}}}
     n = 0;
     j = 0;
+    c[0] = NULL;
     error_log(buffer, true);
     blength = strlen(buffer);
     for (i = 0; i < blength; i++) {
         c[0] = buffer[i];
+        c[1] = '\0';
         if (!strcmp(c, ";")) {
             n++;
             j = 0;
@@ -220,13 +136,13 @@ void readio(int newsockfd) {
     strncpy(str_out, "{\"Answer\":{", sizeof (str_out));
     sprintf(tmp_out, "\"%s\":", command);
     strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
-    success = "true";
+    //success = "true";
     bzero(buffer, 256);
 
     I2C_Open(&file, address);
 
     if (file > 0) {
-        sprintf(fn, "/var/log/anpr/%d_io.ctl", address);
+        sprintf(fn, "logs/%d_io.ctl", address);
         if (!strcmp(command, "SO")) {
             bufferd[0] = 0x40;
             I2C_Send(&file, bufferd, 1);
@@ -250,6 +166,7 @@ void readio(int newsockfd) {
             sprintf(tmp_out, "%d", oo);
             strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
             I2C_Send(&file, bufferd, 2);
+            success = "true";
         }
         if (!strcmp(command, "RO")) {
             bufferd[0] = 0x40;
@@ -274,6 +191,7 @@ void readio(int newsockfd) {
             sprintf(tmp_out, "%d", oo);
             strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
             I2C_Send(&file, bufferd, 2);
+            success = "true";
         }
         if (!strcmp(command, "DI")) {
             bufferd[0] = 0x20;
@@ -289,6 +207,24 @@ void readio(int newsockfd) {
                     strncat(str_out, "}}", sizeof (str_out) - strlen(str_out));
                 }
             }
+            success = "true";
+        }
+        if (!strcmp(command, "DO")) {
+            bufferd[0] = 0x40;
+            I2C_Send(&file, bufferd, 1);
+            I2C_Read(&file, data, 1);
+
+            strncat(str_out, "{\"Output\":{", sizeof (str_out) - strlen(str_out));
+            for (i = 0; i < 4; i++) {
+                sprintf(tmp_out, "\"%d\":%d", i + 1, (data[0] >> i) & 0x01);
+                strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
+                if (i < 3) {
+                    strncat(str_out, ",", sizeof (str_out) - strlen(str_out));
+                } else {
+                    strncat(str_out, "}}", sizeof (str_out) - strlen(str_out));
+                }
+            }
+            success = "true";
         }
         if (!strcmp(command, "AI")) {
             strncat(str_out, "{\"Analoginput\":{", sizeof (str_out) - strlen(str_out));
@@ -343,6 +279,7 @@ void readio(int newsockfd) {
             vcc = (3.3 * temp) / 1023;
             sprintf(tmp_out, "\"4\":%.3f}}", vcc);
             strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
+            success = "true";
 
         }
         if (!strcmp(command, "DC")) {
@@ -375,6 +312,7 @@ void readio(int newsockfd) {
             temp2 = data[0] + (256 * data[1]);
             sprintf(tmp_out, "\"4\":%ld}}", temp2);
             strncat(str_out, tmp_out, sizeof (str_out) - strlen(str_out));
+            success = "true";
         }
         I2C_Close(&file);
     } else {

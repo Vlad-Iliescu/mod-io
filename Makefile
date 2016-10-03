@@ -1,26 +1,19 @@
 # Environment 
-MKDIR=mkdir
-CP=cp
-CCADMIN=CCadmin
+CC=gcc
+CFLAGS = -O3
 
-all:	    mod-io
-	
-mod-io:	    Tmp/mod-io.o Tmp/i2c.o
-	arm-linux-gnueabihf-gcc -Wall -g -o mod-io Tmp/mod-io.o Tmp/i2c.o
-	
-Tmp/mod-io.o:	main.c
-	mkdir -p Tmp > /dev/null
-	arm-linux-gnueabihf-gcc -c -Wall -g -o Tmp/mod-io.o main.c
-	
-Tmp/i2c.o:	i2c.c
-	mkdir -p Tmp > /dev/null
-	arm-linux-gnueabihf-gcc -c -I/var/www/anpr_new/anpr_ioboard/ -Wall -g -o Tmp/i2c.o i2c.c
+DEPS = i2c.h main.h
+OBJ = tmp/i2c.o tmp/main.o
 
-# include project implementation makefile
-#include nbproject/Makefile-impl.mk
+# Script to run before the make starts
+PRE_MAKE:=$(shell mkdir -p tmp > /dev/null)
 
-# include project make variables
-#include nbproject/Makefile-variables.mk
+# how to buils tmp/*.o objects for *.c files
+tmp/%.o: %.c $(DEPS)
+	$(CC) -c -Wall -w -o $@ $< $(CFLAGS)
+
+mod-io: $(OBJ)
+	$(CC) -o $@ $^ $(CFLAGS)
 
 clean:
-	rm -rf mod-io Tmp/mod-io.o Tmp/i2c.o
+	rm -rf mod-io tmp
