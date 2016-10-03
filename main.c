@@ -12,30 +12,8 @@
  * @license:    http://www.anpr-systems.nl/licenses/ktg_anpr
  * 
  */
-#include <stdio.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <signal.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <string.h>
-#include <assert.h>
-#include <netinet/in.h>
-#include "i2c.h"
-#define CHECK_BIT(var, pos) ((var) & (1 << (pos - 1)))
+#include "main.h"
 
-
-int strsplit(char **, char *, char *, int);
-void error_log(char *, bool);
-
-/**
- * Write errors and information to logfile
- * @param msg -> string to be written
- */
 void error_log(char *msg, bool debug) {
 
     if (debug) {
@@ -57,74 +35,10 @@ void error_log(char *msg, bool debug) {
     return;
 }
 
-int strsplit(char **array, char *buf, char *sep, int max) {
-    char *token;
-    int i = 0;
-    int size = 0;
-    char *bp = strdup(buf);
-    while ((i < max - 1) && ((token = strsep(&bp, sep)) != NULL)) {
-        array[i++] = token;
-    }
-    array[i] = NULL; // set to null
-    size = i;
-    return size;
-}
-
 void error(const char *msg) {
     error_log(msg, true);
     exit(-1);
 }
-
-char** str_split(char* a_str, const char a_delim) {
-    char** result = 0;
-    size_t count = 0;
-    char* tmp = a_str;
-    char* last_comma = 0;
-    char delim[2];
-    delim[0] = a_delim;
-    delim[1] = 0;
-
-    /* Count how many elements will be extracted. */
-    while (*tmp) {
-        if (a_delim == *tmp) {
-            count++;
-            last_comma = tmp;
-        }
-        tmp++;
-    }
-
-    /* Add space for trailing token. */
-    count += last_comma < (a_str + strlen(a_str) - 1);
-
-    /* Add space for terminating null string so caller
-       knows where the list of returned strings ends. */
-    count++;
-
-    result = malloc(sizeof (char*) * count);
-
-    if (result) {
-        size_t idx = 0;
-        char* token = strtok(a_str, delim);
-
-        while (token) {
-            assert(idx < count);
-            *(result + idx++) = strdup(token);
-            token = strtok(0, delim);
-        }
-        assert(idx == count - 1);
-        *(result + idx) = 0;
-    }
-
-    return result;
-
-}
-
-/**
- *
- * @param argc
- * @param argv
- * @return
- */
 
 int main(int argc, char **argv) {
     // declare vars
@@ -159,7 +73,7 @@ int main(int argc, char **argv) {
         error_log("ERROR on binding", true);
     }
 
-    while (1 == 1) {
+    while (true) {
         //listen to the socket
         listen(sockfd, 5);
         clilen = sizeof (cli_addr);
@@ -195,10 +109,12 @@ void readio(int newsockfd) {
     // output string is build as {"Answer":{<<command>>:{<<value>>},{"success": {"true" OR "false"}}}}
     n = 0;
     j = 0;
+    c[0] = NULL;
     error_log(buffer, true);
     blength = strlen(buffer);
     for (i = 0; i < blength; i++) {
         c[0] = buffer[i];
+        c[1] = '\0';
         if (!strcmp(c, ";")) {
             n++;
             j = 0;
