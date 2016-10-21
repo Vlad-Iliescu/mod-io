@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
 
 void readio(int newsockfd) {
     int file = 0, temp = 0, oo = 0;
-    char str_out[512], tmp_out[128], buffer[256], fn[128], command[5], add[5], io[1], c[1];
+    char str_out[512], tmp_out[128], buffer[256], command[5], add[5], io[1], c[1], cmd_str[300];
     char *success = "false";
     long temp2 = 0;
     float vcc;
@@ -101,7 +101,7 @@ void readio(int newsockfd) {
     n = 0;
     j = 0;
     c[0] = NULL;
-    log(buffer, true);
+    sprintf(cmd_str, "%s", buffer);
     blength = strlen(buffer);
     for (i = 0; i < blength; i++) {
         c[0] = buffer[i];
@@ -127,14 +127,15 @@ void readio(int newsockfd) {
     strncpy(str_out, "{\"Answer\":{", sizeof(str_out));
     sprintf(tmp_out, "\"%s\":", command);
     strncat(str_out, tmp_out, sizeof(str_out) - strlen(str_out));
-    //success = "true";
     bzero(buffer, 256);
 
     I2C_Open(&file, address);
 
     if (file > 0) {
-        sprintf(fn, "logs/%d_io.ctl", address);
-        if (!strcmp(command, "SO")) { // Set Output On
+        //  // Set Output On => SO;<modio_address>;<relay_nr>
+        if (!strcmp(command, "SO")) {
+            log(cmd_str, true);
+
             bufferd[0] = 0x40;
             I2C_Send(&file, bufferd, 1);
             I2C_Read(&file, data, 1);
@@ -159,7 +160,11 @@ void readio(int newsockfd) {
             I2C_Send(&file, bufferd, 2);
             success = "true";
         }
-        if (!strcmp(command, "RO")) { // Set Output Off
+
+        // Set Output Off => RO;<mod-io_address>;<relay_nr>
+        if (!strcmp(command, "RO")) {
+            log(cmd_str, true);
+
             bufferd[0] = 0x40;
             I2C_Send(&file, bufferd, 1);
             I2C_Read(&file, data, 1);
@@ -184,7 +189,11 @@ void readio(int newsockfd) {
             I2C_Send(&file, bufferd, 2);
             success = "true";
         }
-        if (!strcmp(command, "DI")) { // Read Input
+
+        // Read Input => RO;<modio_address>
+        if (!strcmp(command, "DI")) {
+            log(cmd_str, debug);
+
             bufferd[0] = 0x20;
             I2C_Send(&file, bufferd, 1);
             I2C_Read(&file, data, 1);
@@ -200,7 +209,11 @@ void readio(int newsockfd) {
             }
             success = "true";
         }
-        if (!strcmp(command, "DO")) { // Read Output
+
+        // Read Output => DO;<modio_address
+        if (!strcmp(command, "DO")) {
+            log(cmd_str, debug);
+
             bufferd[0] = 0x40;
             I2C_Send(&file, bufferd, 1);
             I2C_Read(&file, data, 1);
@@ -217,7 +230,11 @@ void readio(int newsockfd) {
             }
             success = "true";
         }
-        if (!strcmp(command, "AI")) { // Read analog Input
+
+        // Read analog Input -- AI;<mod-io_address>
+        if (!strcmp(command, "AI")) {
+            log(cmd_str, debug);
+
             strncat(str_out, "{\"Analoginput\":{", sizeof(str_out) - strlen(str_out));
             bufferd[0] = 0x30;
             I2C_Send(&file, bufferd, 1);
@@ -273,7 +290,11 @@ void readio(int newsockfd) {
             success = "true";
 
         }
+
+        // DigitalCounter -- DC;<mod-io_address;
         if (!strcmp(command, "DC")) {
+            log(cmd_str, debug);
+
             strncat(str_out, "{\"DigitalCounter\":{", sizeof(str_out) - strlen(str_out));
             // digital counter 1
             bufferd[0] = 0x50;
@@ -312,6 +333,8 @@ void readio(int newsockfd) {
     strncat(str_out, ",\"success\":", sizeof(str_out) - strlen(str_out));
     strncat(str_out, success, sizeof(str_out) - strlen(str_out));
     strncat(str_out, "}}", sizeof(str_out) - strlen(str_out));
+
+    log(str_out, debug);
 
     n = write(newsockfd, str_out, sizeof(str_out));
     if (n < 0) error("ERROR writing to socket");
