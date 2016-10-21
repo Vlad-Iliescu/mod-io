@@ -2,8 +2,8 @@
 CC=gcc
 CFLAGS = -O3
 
-DEPS = i2c.h main.h
-OBJ = tmp/i2c.o tmp/main.o
+DEPS = i2c.h logger.h main.h
+OBJ = tmp/i2c.o tmp/logger.o tmp/main.o
 
 # Script to run before the make starts
 PRE_MAKE:=$(shell mkdir -p tmp > /dev/null)
